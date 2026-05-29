@@ -1,4 +1,6 @@
 const http = require('http');
+const fs   = require('fs');
+const path = require('path');
 
 const TOKEN_URL = 'https://platform.claude.com/v1/oauth/token';
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage';
@@ -13,9 +15,30 @@ const ICON_WEEKLY  = 'i2867';
 const ICON_CREDITS = 'i1334';
 const ICON_ERROR   = 'i9182';
 
-const REFRESH_TOKEN = process.env.CLAUDE_REFRESH_TOKEN;
-if (!REFRESH_TOKEN) {
-  console.error('[claude-lametric] CLAUDE_REFRESH_TOKEN env var is not set');
+// Claude rotates the refresh token on every refresh and invalidates the old
+// one, so we must PERSIST each new refresh_token or the next refresh fails.
+// Bootstrap from CLAUDE_REFRESH_TOKEN, then keep the rotated value in TOKEN_STORE.
+const TOKEN_STORE = process.env.TOKEN_STORE || path.join(__dirname, '.refresh_token');
+
+function loadRefreshToken() {
+  try {
+    const stored = fs.readFileSync(TOKEN_STORE, 'utf8').trim();
+    if (stored) return stored;
+  } catch { /* no stored token yet */ }
+  return process.env.CLAUDE_REFRESH_TOKEN;
+}
+
+function saveRefreshToken(token) {
+  try {
+    fs.writeFileSync(TOKEN_STORE, token + '\n', { mode: 0o600 });
+  } catch (err) {
+    console.error('[claude-lametric] could not persist refresh token:', err.code || err.message);
+  }
+}
+
+let refreshToken = loadRefreshToken();
+if (!refreshToken) {
+  console.error('[claude-lametric] no refresh token: set CLAUDE_REFRESH_TOKEN');
   process.exit(1);
 }
 
@@ -32,7 +55,7 @@ async function getAccessToken() {
     headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
     body: JSON.stringify({
       grant_type: 'refresh_token',
-      refresh_token: REFRESH_TOKEN,
+      refresh_token: refreshToken,
       client_id: CLIENT_ID,
     }),
   });
@@ -41,6 +64,12 @@ async function getAccessToken() {
 
   const data = await res.json();
   if (!data.access_token) throw new Error('token_refresh_no_access_token');
+
+  // Persist the rotated refresh token so the next refresh keeps working.
+  if (data.refresh_token && data.refresh_token !== refreshToken) {
+    refreshToken = data.refresh_token;
+    saveRefreshToken(refreshToken);
+  }
 
   cachedAccessToken = data.access_token;
   tokenExpiresAt    = data.expires_in
@@ -100,7 +129,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify(buildFrames(usage)));
   } catch (err) {
     const type  = err.message.split(':')[0];
-    const isAuth = type.includes('401') || type.includes('403');
+    const isAuth = type.includes('401') || type.includes('403') || type.includes('400');
     console.error('[claude-lametric] error:', type);
     res.writeHead(200);
     res.end(JSON.stringify({
