@@ -97,8 +97,9 @@ collect_config() {
   prompt UNPRIVILEGED "Unprivileged (1/0)"  "1"
 
   printf "\n${BOLD}Claude credentials${CL}\n"
-  printf "  Get the refresh token from ${YW}~/.claude/.credentials.json${CL} on a Mac/Linux\n"
-  printf "  with the Claude CLI logged in. Field: claudeAiOauth.refreshToken\n\n"
+  printf "  Get the refresh token (field ${YW}claudeAiOauth.refreshToken${CL}) where the Claude CLI is logged in:\n"
+  printf "    Linux/WSL : ${BL}cat ~/.claude/.credentials.json${CL}\n"
+  printf "    macOS     : ${BL}security find-generic-password -s 'Claude Code-credentials' -w${CL}\n\n"
   prompt_secret CLAUDE_REFRESH_TOKEN "Claude refresh token (hidden)"
   [[ -z "$CLAUDE_REFRESH_TOKEN" ]] && msg_error "Refresh token cannot be empty"
 
