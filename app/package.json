@@ -1,0 +1,13 @@
+{
+  "name": "claude-lametric-server",
+  "version": "1.0.0",
+  "description": "Local HTTP server that exposes Claude AI quota in LaMetric JSON format",
+  "license": "MIT",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

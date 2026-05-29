@@ -1,0 +1,23 @@
+{
+  "_comment": "Reference template for the LaMetric Developer Portal — not a loadable file.",
+  "_comment2": "Enter these values manually at https://developer.lametric.com.",
+  "_comment3": "Poll apps can't take the host as a user setting, so the URL is a literal — replace the IP/port with your own server's LAN address. Create the app as Private.",
+
+  "name": "Claude Usage",
+  "description": "Shows Claude AI usage limits (5-hour session and 7-day weekly) from a self-hosted server on your LAN. No cloud, no shared backend.",
+  "version": "1.0",
+  "type": "indicator",
+  "visibility": "private",
+
+  "communication": {
+    "url": "http://192.168.1.100:3000/api",
+    "method": "GET",
+    "pollFrequency": "5 min",
+    "dataFormat": "Predefined (LaMetric Format)"
+  },
+
+  "frameIcon": {
+    "_comment": "Store/preview icon only — at runtime icons come from the server's frames.",
+    "name": "hourglass"
+  }
+}
