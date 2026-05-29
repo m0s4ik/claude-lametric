@@ -43,21 +43,12 @@ SSH into your Proxmox host as root and run:
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/m0s4ik/claude-lametric/main/ct/claude-lametric.sh)"
 ```
 
-The installer (community-scripts style) will ask for:
+The installer follows the community-scripts style: a `whiptail` menu lets you pick
 
-| Field | Default |
-|-------|---------|
-| Container ID | next available |
-| Hostname | `claude-lametric` |
-| CPU / RAM / Disk | `1 core / 256 MB / 2 GB` |
-| Storage pool | `local-lvm` |
-| Bridge | `vmbr0` |
-| Network | `dhcp` (or static `IP/CIDR + gateway`) |
-| Unprivileged | `1` |
-| Claude refresh token | *(hidden input)* |
-| App port | `3000` |
+- **Default Settings** — next free CTID, `claude-lametric`, 1 core / 256 MB / 2 GB, DHCP, unprivileged, port `3000`; you only pick the storage pool (if more than one) and paste the refresh token, or
+- **Advanced Settings** — prompts for CTID, hostname, CPU/RAM/disk, storage, bridge, DHCP vs static IP, privileged/unprivileged, and port.
 
-It downloads the Debian 12 template if missing, creates an unprivileged LXC, installs Node.js 22, deploys the server, and registers a systemd unit that auto-starts on boot.
+Either way it asks once for your **Claude refresh token** (hidden input). Then it downloads the Debian 12 template if missing, creates the LXC, installs Node.js 22, pulls `server.js` from this repo, writes the token to `/opt/claude-lametric/.env` (mode `0600`), and registers a systemd unit that auto-starts on boot.
 
 At the end you get the endpoint URL — e.g. `http://192.168.1.42:3000/api`.
 
