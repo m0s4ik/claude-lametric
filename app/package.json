@@ -2,7 +2,7 @@
   "name": "claude-lametric-server",
   "version": "1.0.0",
   "description": "Local HTTP server that exposes Claude AI quota in LaMetric JSON format",
-  "author": "Andrea Mattera (m0s4ik)",
+  "author": "Andrea",
   "license": "MIT",
   "repository": {
     "type": "git",
