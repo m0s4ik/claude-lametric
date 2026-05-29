@@ -34,6 +34,7 @@ var_bridge="vmbr0"
 var_port="3000"
 var_storage=""
 var_ctid=""
+var_password=""
 CLAUDE_REFRESH_TOKEN=""
 
 header_info() {
@@ -150,6 +151,12 @@ advanced_settings() {
   else
     var_unprivileged="0"
   fi
+
+  var_password=$(wt --title "ROOT PASSWORD" --passwordbox \
+"Optional root password (for SSH / manual console login).
+
+Leave empty for no password — the console auto-logs in as root either way." \
+    11 72) || msg_error "Aborted"
 
   var_port=$(wt --title "APP PORT" --inputbox "HTTP port the server listens on" 8 60 "$var_port") \
     || msg_error "Aborted"
@@ -279,6 +286,38 @@ EOF
   fi
 }
 
+# ---------- Console access (autologin + optional root password) ----------
+configure_console() {
+  msg_info "Configuring console access"
+
+  if [[ -n "$var_password" ]]; then
+    printf 'root:%s\n' "$var_password" | pct exec "$var_ctid" -- chpasswd
+  fi
+
+  # autologin as root on the container console (community-scripts behaviour)
+  local tmp_tty tmp_con; tmp_tty=$(mktemp); tmp_con=$(mktemp)
+  cat > "$tmp_tty" <<'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud %I 115200,38400,9600 $TERM
+EOF
+  cat > "$tmp_con" <<'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud - 115200,38400,9600 $TERM
+EOF
+  pct exec "$var_ctid" -- mkdir -p \
+    /etc/systemd/system/container-getty@1.service.d \
+    /etc/systemd/system/console-getty.service.d
+  pct push "$var_ctid" "$tmp_tty" /etc/systemd/system/container-getty@1.service.d/autologin.conf
+  pct push "$var_ctid" "$tmp_con" /etc/systemd/system/console-getty.service.d/autologin.conf
+  rm -f "$tmp_tty" "$tmp_con"
+  pct exec "$var_ctid" -- bash -lc \
+    'systemctl daemon-reload; systemctl restart container-getty@1 console-getty 2>/dev/null || true'
+
+  msg_ok "Console access configured (autologin as root)"
+}
+
 # ---------- Final summary ----------
 show_summary() {
   local lxc_ip
@@ -290,6 +329,11 @@ ${BOLD}${GN}  ★  Installation complete  ★${CL}
 
   Container       : ${BOLD}$var_ctid${CL}  ($var_hostname)
   Server endpoint : ${BOLD}${BL}http://${lxc_ip}:${var_port}/api${CL}
+
+${BOLD}Container access${CL}
+  Console (web UI / pct console) auto-logs in as root.
+  From the host : ${BL}pct enter $var_ctid${CL}${var_password:+
+  Root password : (the one you set)}
 
 ${BOLD}Next step — create the LaMetric app${CL}
   1. ${BL}https://developer.lametric.com${CL} → Create → Indicator App
@@ -313,6 +357,7 @@ main() {
   ensure_template
   create_lxc
   install_inside_lxc
+  configure_console
   show_summary
 }
 
